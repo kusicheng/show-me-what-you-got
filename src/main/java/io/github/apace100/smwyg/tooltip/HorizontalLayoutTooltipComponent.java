@@ -21,20 +21,20 @@ public class HorizontalLayoutTooltipComponent implements TooltipComponent {
         this.gap = gap;
     }
 
-    private void calculateHeight(TextRenderer textRenderer) {
+    private void calculateHeight() {
         int h = 0;
         for(TooltipComponent tc : components) {
-            if(tc.getHeight(textRenderer) > h) {
-                h = tc.getHeight(textRenderer);
+            if(tc.getHeight() > h) {
+                h = tc.getHeight();
             }
         }
         height = h;
     }
 
     @Override
-    public int getHeight(TextRenderer textRenderer) {
+    public int getHeight() {
         if(heightDirty) {
-            calculateHeight(textRenderer);
+            calculateHeight();
             heightDirty = false;
         }
         return height;
@@ -50,8 +50,8 @@ public class HorizontalLayoutTooltipComponent implements TooltipComponent {
         return sumOfWidths;
     }
 
-    private int getComponentY(TooltipComponent component, TextRenderer textRenderer) {
-        int height = component.getHeight(textRenderer);
+    private int getComponentY(TooltipComponent component) {
+        int height = component.getHeight();
         return (this.height - height) / 2;
     }
 
@@ -59,17 +59,17 @@ public class HorizontalLayoutTooltipComponent implements TooltipComponent {
     public void drawText(TextRenderer textRenderer, int x, int y, Matrix4f matrix, VertexConsumerProvider.Immediate vertexConsumers) {
         int currentX = x;
         for(TooltipComponent tc : components) {
-            tc.drawText(textRenderer, currentX, y + getComponentY(tc, textRenderer), matrix, vertexConsumers);
+            tc.drawText(textRenderer, currentX, y + getComponentY(tc), matrix, vertexConsumers);
             currentX += tc.getWidth(textRenderer) + gap;
         }
     }
 
     @Override
-    public void drawItems(TextRenderer textRenderer, int x, int y, int width, int height, DrawContext context) {
-        int currentX = x;
-        for(TooltipComponent tc : components) {
-            tc.drawItems(textRenderer, currentX, y + getComponentY(tc, textRenderer), width, height, context);
-            currentX += tc.getWidth(textRenderer) + gap;
-        }
+    public void drawItems(TextRenderer textRenderer, int x, int y, DrawContext context) {
+       int currentX = x;
+       for(TooltipComponent tc : components) {
+           tc.drawItems(textRenderer, currentX, y + getComponentY(tc), context);
+           currentX += tc.getWidth(textRenderer) + gap;
+       }
     }
 }

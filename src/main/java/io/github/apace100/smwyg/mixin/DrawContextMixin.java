@@ -12,7 +12,6 @@ import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.Style;
-import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,7 +19,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Mixin(DrawContext.class)
 public class DrawContextMixin {
@@ -40,20 +41,47 @@ public class DrawContextMixin {
         smwyg$hoveredStack = stack;
     }
 
-    @Inject(method = "drawTooltip(Lnet/minecraft/client/font/TextRenderer;Ljava/util/List;IILnet/minecraft/client/gui/tooltip/TooltipPositioner;Lnet/minecraft/util/Identifier;)V", at = @At("HEAD"))
-    private void smwyg$modifyFirstTooltipComponent(TextRenderer textRenderer, List<TooltipComponent> components, int x, int y, TooltipPositioner positioner, Identifier texture, CallbackInfo ci) {
-        if(smwyg$hoveredStack == null || smwyg$hoveredStack.isEmpty() || components.size() == 0) {
+    @Inject(method = "drawTooltip(Lnet/minecraft/client/font/TextRenderer;Ljava/util/List;Ljava/util/Optional;II)V", at = @At("HEAD"))
+    private void smwyg$modifyFirstTooltipComponent(
+        TextRenderer textRenderer,
+        List<TooltipComponent> components,
+        Optional<TooltipPositioner> positionerOpt,
+        int x,
+        int y,
+        CallbackInfo ci
+    ) {
+        if(smwyg$hoveredStack == null || smwyg$hoveredStack.isEmpty() || components.isEmpty()) {
             return;
         }
-        TooltipComponent originalComponent = components.get(0);
-        TooltipComponent stackComponent = new ItemStackTooltipComponent(smwyg$hoveredStack);
-        TooltipComponent combinedComponent;
-        if(textRenderer.isRightToLeft()) {
-            combinedComponent = new HorizontalLayoutTooltipComponent(List.of(originalComponent, stackComponent), 3);
-        } else {
-            combinedComponent = new HorizontalLayoutTooltipComponent(List.of(stackComponent, originalComponent), 3);
-        }
-        components.set(0, combinedComponent);
+
+        try {
+            Object firstElement = components.get(0);
+            if (!(firstElement instanceof TooltipComponent)) {
+                smwyg$hoveredStack = null;
+                return;
+            }
+            TooltipComponent originalComponent = (TooltipComponent) firstElement;
+            TooltipComponent stackComponent = new ItemStackTooltipComponent(smwyg$hoveredStack);
+            
+            TooltipComponent combinedComponent;
+            if(textRenderer.isRightToLeft()) {
+                combinedComponent = new HorizontalLayoutTooltipComponent(
+                    List.of(originalComponent, stackComponent), 3);
+            } else {
+                combinedComponent = new HorizontalLayoutTooltipComponent(
+                    List.of(stackComponent, originalComponent), 3);
+            }
+            
+            try {
+                components.set(0, combinedComponent);
+            } catch (UnsupportedOperationException e) {
+                List<TooltipComponent> newComponents = new ArrayList<>(components);
+                newComponents.set(0, combinedComponent);
+                components.clear();
+                components.addAll(newComponents);
+            }
+        } catch (Exception e) {}
+        
         smwyg$hoveredStack = null;
     }
 }
